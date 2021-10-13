@@ -19,16 +19,27 @@ from operator import add
 
 __author__ = "Ivan Sipiran"
 __license__ = "MIT"
-
+offset_cam=2.5
 # A class to store the application control
 class Controller:
     def __init__(self):
         self.fillPolygon = True
         self.showAxis = True
-        self.viewPos = np.array([12,12,12])
-        self.at = np.array([0,0,0])
+        #posicion de la camara
+        self.viewPos = np.array([2.0, 1, 5.0+offset_cam])
+        #donde mira inicialmente
+        self.at = np.array([2,-0.0,-1])
         self.camUp = np.array([0, 1, 0])
         self.distance = 20
+
+        self.carSpeed=0.005
+        self.theta = 0.0
+        self.phi = -0.1
+
+        self.carPos = np.array([2.0, -0.037409, 5.0])
+
+        #self.front = self.carPos+np.array([0,0,0])
+        self.camRight = np.array([0,0,0])
 
 
 controller = Controller()
@@ -61,8 +72,27 @@ def setPlot(texPipeline, axisPipeline, lightPipeline):
     glUniform1f(glGetUniformLocation(lightPipeline.shaderProgram, "quadraticAttenuation"), 0.01)
 
 def setView(texPipeline, axisPipeline, lightPipeline):
+    global controller
+    
+    # yaw=controller.theta
+    # pitch= np.arctan(controller.at[1]/controller.at[2])
+
+    # frontx = np.cos(yaw) * np.cos(pitch)
+    # fronty = np.sin(pitch)
+    # frontz = np.sin(yaw) * np.cos(pitch)
+
+    # controller.front = np.array([frontx, fronty, frontz])
+    # controller.front = controller.front / np.linalg.norm(controller.front)
+
+    # controller.camRight = np.cross(controller.front, controller.camUp)
+    # controller.camRight = controller.camRight / np.linalg.norm(controller.camRight)
+
+    # controller.camUp = np.cross(controller.camRight, controller.front)
+    # controller.camUp = controller.camUp / np.linalg.norm(controller.camUp)
+
     view = tr.lookAt(
             controller.viewPos,
+            #controller.viewPos,
             controller.at,
             controller.camUp
         )
@@ -93,6 +123,18 @@ def on_key(window, key, scancode, action, mods):
 
     elif key == glfw.KEY_ESCAPE:
         glfw.set_window_should_close(window, True)
+    
+    elif key == glfw.KEY_W:
+        controller.carPos -= controller.carSpeed * np.array([np.cos(controller.theta),0,np.sin(controller.theta)])
+
+    elif key == glfw.KEY_S:
+        controller.carPos += controller.carSpeed * np.array([np.cos(controller.theta),0,np.sin(controller.theta)])
+    
+    elif key == glfw.KEY_D:
+        controller.theta -= 0.001
+
+    elif key == glfw.KEY_A:
+        controller.carPos += 0.001
     
     elif key == glfw.KEY_1:
         controller.viewPos = np.array([controller.distance,controller.distance,controller.distance]) #Vista diagonal 1
@@ -453,7 +495,7 @@ if __name__ == "__main__":
 
     #NOTA: Aqui creas un objeto con tu escena
     dibujo = createStaticScene(texPipeline)
-    car =createCarScene(lightPipeline)
+    car = createCarScene(lightPipeline)
 
     setPlot(texPipeline, axisPipeline,lightPipeline)
 
@@ -470,6 +512,22 @@ if __name__ == "__main__":
 
         # Using GLFW to check for input events
         glfw.poll_events()
+
+        if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
+            controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+            #controller.viewPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+            #controller.at -= controller.carPos
+
+        if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
+            controller.carPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+            #controller.viewPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+            #controller.at += controller.carPos
+
+        if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+            controller.theta -= 0.005
+
+        if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+            controller.theta += 0.005
 
         # Clearing the screen in both, color and depth
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -492,6 +550,9 @@ if __name__ == "__main__":
         sg.drawSceneGraphNode(dibujo, texPipeline, "model")
 
         glUseProgram(lightPipeline.shaderProgram)
+        #actualizamos el auto
+        sg.findNode(car,"car1").transform = tr.matmul([tr.translate(controller.carPos[0],controller.carPos[1],controller.carPos[2]),
+                                                        tr.rotationY(np.pi+controller.theta)])
         sg.drawSceneGraphNode(car, lightPipeline, "model")
 
         
