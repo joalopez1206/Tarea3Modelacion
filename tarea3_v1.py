@@ -19,27 +19,36 @@ from operator import add
 
 __author__ = "Ivan Sipiran"
 __license__ = "MIT"
-offset_cam=2.5
+#offset inicial
+offset_cam=1.5
 # A class to store the application control
 class Controller:
     def __init__(self):
+        #propiedades de los poligonos y ejes
         self.fillPolygon = True
         self.showAxis = True
-        #posicion de la camara
-        self.viewPos = np.array([2.0, 1, 5.0+offset_cam])
-        #donde mira inicialmente
-        self.at = np.array([2,-0.0,-1])
+        #altura de la camara, es como un offset para la esfera 
+        #que va a estar dando vueltas con la camara
+        self.height=1.6
+        #posicion inciial de la camara
+        self.viewPos = np.array([2.0, 0.5, 5.0+offset_cam])
+        #donde mira inicialmente(al auto)
+        self.at = np.array([2.0, -0.037409, 5.0])
+        #Eje de referencia
         self.camUp = np.array([0, 1, 0])
+        #venia con el programa
         self.distance = 20
-
+        #radio de la esfera de la camara
+        self.radius= 1.99
+        
+        #parametro velocidad del auto
         self.carSpeed=0.005
+        #angulo inciial del auto c/r al ¡¡ eje Z DEL AUTO !!
         self.theta = 0.0
-        self.phi = -0.1
 
+        #posicion inicial de auto
         self.carPos = np.array([2.0, -0.037409, 5.0])
 
-        #self.front = self.carPos+np.array([0,0,0])
-        self.camRight = np.array([0,0,0])
 
 
 controller = Controller()
@@ -74,25 +83,9 @@ def setPlot(texPipeline, axisPipeline, lightPipeline):
 def setView(texPipeline, axisPipeline, lightPipeline):
     global controller
     
-    # yaw=controller.theta
-    # pitch= np.arctan(controller.at[1]/controller.at[2])
-
-    # frontx = np.cos(yaw) * np.cos(pitch)
-    # fronty = np.sin(pitch)
-    # frontz = np.sin(yaw) * np.cos(pitch)
-
-    # controller.front = np.array([frontx, fronty, frontz])
-    # controller.front = controller.front / np.linalg.norm(controller.front)
-
-    # controller.camRight = np.cross(controller.front, controller.camUp)
-    # controller.camRight = controller.camRight / np.linalg.norm(controller.camRight)
-
-    # controller.camUp = np.cross(controller.camRight, controller.front)
-    # controller.camUp = controller.camUp / np.linalg.norm(controller.camUp)
-
+    
     view = tr.lookAt(
             controller.viewPos,
-            #controller.viewPos,
             controller.at,
             controller.camUp
         )
@@ -500,7 +493,7 @@ if __name__ == "__main__":
     setPlot(texPipeline, axisPipeline,lightPipeline)
 
     perfMonitor = pm.PerformanceMonitor(glfw.get_time(), 0.5)
-
+    t0 = glfw.get_time()
     # glfw will swap buffers as soon as possible
     glfw.swap_interval(0)
 
@@ -513,21 +506,55 @@ if __name__ == "__main__":
         # Using GLFW to check for input events
         glfw.poll_events()
 
+        # Getting the time difference from the previous iteration
+        t1 = glfw.get_time()
+        dt = t1 - t0
+        t0 = t1
+        #angulos para avanzar y retroceder
+        #indica la latitud de donde se mira con la camara
+        phi1=-0.5
+        phi2=0.5
         if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
+            #si avanza se actualiza la posicion del auto
             controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
-            #controller.viewPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
-            #controller.at -= controller.carPos
+            #si doblamos se actualiza el angulo
+            if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                controller.theta += 2*dt
+            
+            if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                controller.theta -= 2*dt
+            
+            #ahora situamos las coordenadas esfericas de la camara
+            camX = controller.radius * np.sin(controller.theta) * np.cos(phi1)
+            camY = controller.radius * np.sin(phi1)
+            camZ = controller.radius * np.cos(controller.theta) * np.cos(phi1)
+            
+            #notemos que la posicion de vista es:
+            #el vector donde esta el auto, un offset que es la altura del centro de la esfera y la esfera en si
+            controller.viewPos = controller.carPos +np.array([0,controller.height,0])+ np.array([camX,camY,camZ])
+            
+            #ahora le decimos que mire el auto como referencia
+            controller.at = controller.carPos 
 
         if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
+
             controller.carPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
-            #controller.viewPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
-            #controller.at += controller.carPos
 
-        if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
-            controller.theta -= 0.005
+            if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                controller.theta -= 2*dt
 
-        if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
-            controller.theta += 0.005
+            if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                controller.theta += 2*dt
+            
+            #es la misma dinamica que el anterior pero para retroceder! solo que ahora le imponemos otro angulo phi2 (otro grado de libertad)
+            #pero seguimos situando la camara en la misma esfera
+            camX = controller.radius * np.sin(controller.theta) * np.cos(phi2)
+            camY = controller.radius * np.sin(phi2)
+            camZ = controller.radius * np.cos(controller.theta) * np.cos(phi2)
+            
+            controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
+            
+            controller.at = controller.carPos
 
         # Clearing the screen in both, color and depth
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -550,7 +577,9 @@ if __name__ == "__main__":
         sg.drawSceneGraphNode(dibujo, texPipeline, "model")
 
         glUseProgram(lightPipeline.shaderProgram)
-        #actualizamos el auto
+        
+        #actualizamos el auto; buscamos el nodo, luego le decimos que cambie su transformacion a que primero rote pi+theta
+        #y luego lo transladamos como antes por la misma posicion!
         sg.findNode(car,"car1").transform = tr.matmul([tr.translate(controller.carPos[0],controller.carPos[1],controller.carPos[2]),
                                                         tr.rotationY(np.pi+controller.theta)])
         sg.drawSceneGraphNode(car, lightPipeline, "model")
