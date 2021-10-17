@@ -27,22 +27,29 @@ class Controller:
         #propiedades de los poligonos y ejes
         self.fillPolygon = True
         self.showAxis = True
+
         #altura de la camara, es como un offset para la esfera 
         #que va a estar dando vueltas con la camara
         self.height=1.6
+
         #posicion inciial de la camara
         self.viewPos = np.array([2.0, 0.5, 5.0+offset_cam])
+
         #donde mira inicialmente(al auto)
         self.at = np.array([2.0, -0.037409, 5.0])
+
         #Eje de referencia
         self.camUp = np.array([0, 1, 0])
+
         #venia con el programa
         self.distance = 20
+        
         #radio de la esfera de la camara
         self.radius= 1.99
         
         #parametro velocidad del auto
         self.carSpeed=0.005
+
         #angulo inciial del auto c/r al ¡¡ eje Z DEL AUTO !!
         self.theta = 0.0
 
@@ -510,13 +517,15 @@ if __name__ == "__main__":
         t1 = glfw.get_time()
         dt = t1 - t0
         t0 = t1
-        #angulos para avanzar y retroceder
+
+        #angulos para avanzar y retroceder respectivamente.
         #indica la latitud de donde se mira con la camara
-        phi1=-0.5
-        phi2=0.5
+        phi1=-0.5; phi2=0.5
+
         if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
             #si avanza se actualiza la posicion del auto
             controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+
             #si doblamos se actualiza el angulo
             if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
                 controller.theta += 2*dt
@@ -536,6 +545,7 @@ if __name__ == "__main__":
             #ahora le decimos que mire el auto como referencia
             controller.at = controller.carPos 
 
+        #aca es excatamente lo mismo a lo anterior
         if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
 
             controller.carPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
