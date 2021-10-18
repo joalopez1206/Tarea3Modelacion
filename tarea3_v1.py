@@ -14,6 +14,7 @@ import grafica.scene_graph as sg
 import grafica.easy_shaders as es
 import grafica.lighting_shaders as ls
 import grafica.performance_monitor as pm
+import grafica.text_renderer as tx
 from grafica.assets_path import getAssetPath
 from operator import add
 
@@ -48,7 +49,7 @@ class Controller:
         self.radius= 1.99
         
         #parametro velocidad del auto
-        self.carSpeed=0.005
+        self.carSpeed=0.009
 
         #angulo inciial del auto c/r al ¡¡ eje Z DEL AUTO !!
         self.theta = 0.0
@@ -337,15 +338,157 @@ def createTiledFloor(dim):
 # y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda la geometría y las texturas
 # Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
-def createHouse(pipeline):
-    pass
+def createHouse(pipeline,wallTexture,roofTexture):
+    #primitiva murallas de la casa
+    aWallShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    aWallShape.texture = es.textureSimpleSetup(
+        getAssetPath(wallTexture), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
+    glGenerateMipmap(GL_TEXTURE_2D)
+
+    #primitiva techo de la casa
+    aRoofShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    aRoofShape.texture = es.textureSimpleSetup(
+        getAssetPath(roofTexture), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
+    glGenerateMipmap(GL_TEXTURE_2D)
+    
+    #-------- murallas de la casa------------
+    #pared rotada
+    wallHouseNodeRotated = sg.SceneGraphNode('murallaHouse')
+    wallHouseNodeRotated.transform = tr.matmul([tr.scale(1,1,2),tr.rotationY(np.pi/2)])
+    wallHouseNodeRotated.childs +=[aWallShape]
+
+    #paredes paralelo al eje X
+    #pared en posicion z=1
+    wallHouseXPos= sg.SceneGraphNode('murallaPosX')
+    wallHouseXPos.transform = tr.translate(0,0,1)
+    wallHouseXPos.childs +=[aWallShape]
+    #pared en posicion z=1
+    wallHouseXNeg= sg.SceneGraphNode('murallaNegX')
+    wallHouseXNeg.transform = tr.translate(0,0,-1)
+    wallHouseXNeg.childs +=[aWallShape]
+
+    #paredes paralelo al ejeZ
+    #pared en posicion x=-0.5
+    wallHouseZPos= sg.SceneGraphNode('murallaPosZ')
+    wallHouseZPos.transform = tr.translate(-0.5,0,0)
+    wallHouseZPos.childs +=[wallHouseNodeRotated]
+    #pared en posicion x=0.5
+    wallHouseZNeg= sg.SceneGraphNode('murallaPosZ')
+    wallHouseZNeg.transform = tr.translate(0.5,0,0)
+    wallHouseZNeg.childs +=[wallHouseNodeRotated]
+
+    #cielo de las paredes de la casa
+    ceilingHouse = sg.SceneGraphNode('murallaCielo')
+    ceilingHouse.transform = tr.matmul([tr.scale(1,1,2),tr.translate(0,0.5,0),tr.rotationX(np.pi/2)])
+    ceilingHouse.childs += [aWallShape]
+
+    #nodo de las murallas y el cielo
+    wallsHouse = sg.SceneGraphNode('wallsHouse')
+    wallsHouse.childs += [wallHouseXPos,wallHouseXNeg,
+                    wallHouseZNeg,wallHouseZPos,ceilingHouse] 
+    
+    #------------termino murallas y cielo--------------
+
+    #----------techo de la casa-------------
+    #primero creemos un cubo centrado para poder asi rotarlo y hacer cosas
+
+    CubeXPos= sg.SceneGraphNode('murallaPosX')
+    CubeXPos.transform = tr.translate(0,0,0.5)
+    CubeXPos.childs +=[aRoofShape]
+
+    CubeXNeg= sg.SceneGraphNode('murallaNegX')
+    CubeXNeg.transform = tr.translate(0,0,-0.5)
+    CubeXNeg.childs +=[aRoofShape]
+
+    CubeZPos= sg.SceneGraphNode('murallaPosZ')
+    CubeZPos.transform = tr.matmul([tr.translate(0.5,0,0),tr.rotationY(np.pi/2)])
+    CubeZPos.childs +=[aRoofShape]
+   
+    CubeZNeg= sg.SceneGraphNode('murallaPosZ')
+    CubeZNeg.transform = tr.matmul([tr.translate(-0.5,0,0),tr.rotationY(np.pi/2)])
+    CubeZNeg.childs +=[aRoofShape]
+
+    CubeYPos= sg.SceneGraphNode('murallaPosZ')
+    CubeYPos.transform = tr.matmul([tr.translate(0,0.5,0),tr.rotationX(np.pi/2)])
+    CubeYPos.childs +=[aRoofShape]
+   
+    CubeYNeg= sg.SceneGraphNode('murallaPosZ')
+    CubeYNeg.transform = tr.matmul([tr.translate(0,-0.5,0),tr.rotationX(np.pi/2)])
+    CubeYNeg.childs +=[aRoofShape]
+
+    cube=sg.SceneGraphNode('cubo de textura')
+    cube.childs +=[CubeXNeg,CubeXPos,CubeYNeg,CubeYPos,CubeZPos,CubeZNeg]
+
+    #creado el cubo ahora podemos hacer un techo con consistencia
+
+    roofLeft=sg.SceneGraphNode('techoLeft')
+    roofLeft.transform = tr.matmul([tr.translate(-0.25,0.75,0),tr.rotationZ(np.pi/4),tr.scale(0.75,1/16,2)])
+    roofLeft.childs += [cube]
+
+    roofRight=sg.SceneGraphNode('techoRight')
+    roofRight.transform = tr.matmul([tr.translate(0.25,0.75,0),tr.rotationZ(-np.pi/4),tr.scale(0.75,1/16,2)])
+    roofRight.childs += [cube]
+
+    roofNode=sg.SceneGraphNode('techo')
+    roofNode.childs += [roofLeft,roofRight]
+
+
+    #------------termino techo de la casa---------
+    
+    scene = sg.SceneGraphNode('world')
+    scene.childs += [roofNode,wallsHouse] 
+    return scene
 
 # TAREA3: Implementa la función "createWall" que crea un objeto que representa un muro
 # y devuelve un nodo de un grafo de escena (un objeto sg.SceneGraphNode) que representa toda la geometría y las texturas
 # Esta función recibe como parámetro el pipeline que se usa para las texturas (texPipeline)
 
-def createWall(pipeline):
-    pass
+def createWall(pipeline,wallTexture):
+
+    aWallShape = createGPUShape(pipeline, bs.createTextureQuad(1.0, 1.0))
+    aWallShape.texture = es.textureSimpleSetup(
+        getAssetPath(wallTexture), GL_REPEAT, GL_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_NEAREST)
+    glGenerateMipmap(GL_TEXTURE_2D)
+
+    #primero creemos un cubo centrado para poder asi rotarlo y hacer cosas
+    
+    CubeXPos= sg.SceneGraphNode('murallaPosX')
+    CubeXPos.transform = tr.translate(0,0,0.5)
+    CubeXPos.childs +=[aWallShape]
+
+    CubeXNeg= sg.SceneGraphNode('murallaNegX')
+    CubeXNeg.transform = tr.translate(0,0,-0.5)
+    CubeXNeg.childs +=[aWallShape]
+
+    CubeZPos= sg.SceneGraphNode('murallaPosZ')
+    CubeZPos.transform = tr.matmul([tr.translate(0.5,0,0),tr.rotationY(np.pi/2)])
+    CubeZPos.childs +=[aWallShape]
+   
+    CubeZNeg= sg.SceneGraphNode('murallaPosZ')
+    CubeZNeg.transform = tr.matmul([tr.translate(-0.5,0,0),tr.rotationY(np.pi/2)])
+    CubeZNeg.childs +=[aWallShape]
+
+    CubeYPos= sg.SceneGraphNode('murallaPosZ')
+    CubeYPos.transform = tr.matmul([tr.translate(0,0.5,0),tr.rotationX(np.pi/2)])
+    CubeYPos.childs +=[aWallShape]
+   
+    CubeYNeg= sg.SceneGraphNode('murallaPosZ')
+    CubeYNeg.transform = tr.matmul([tr.translate(0,-0.5,0),tr.rotationX(np.pi/2)])
+    CubeYNeg.childs +=[aWallShape]
+
+    
+    cube=sg.SceneGraphNode('cubo de textura')
+    cube.childs +=[CubeXNeg,CubeXPos,CubeYNeg,CubeYPos,CubeZPos,CubeZNeg]
+
+    #luego podemos hacer las murallitas de contencion en filas
+    aBarrier=sg.SceneGraphNode('barrerita')
+    aBarrier.transform = tr.matmul([tr.scale(1/16,1/5,1)])
+    aBarrier.childs += [cube]
+
+    scene=sg.SceneGraphNode('world')
+    scene.childs += [aBarrier]
+
+    return scene
 
 # TAREA3: Esta función crea un grafo de escena especial para el auto.
 def createCarScene(pipeline):
@@ -450,6 +593,53 @@ def createStaticScene(pipeline):
     scene.childs += [arcBottom]
     scene.childs += [sandNode]
     
+    #aca ponemos las casas las casas
+    casa1=createHouse(pipeline,"wall4.jpg","roof1.jpg")
+    casa1.transform = tr.matmul([tr.translate(0,0,5),tr.uniformScale(0.5)])
+
+    casa2=createHouse(pipeline,"wall2.jpg","roof4.jpg")
+    casa2.transform = tr.matmul([tr.translate(0,0,0),tr.uniformScale(0.5)])
+
+    casa3=createHouse(pipeline,"wall1.jpg","roof4.jpg")
+    casa3.transform = tr.matmul([tr.translate(0,0,-5),tr.uniformScale(0.5)])
+
+    casa4=createHouse(pipeline,"wall2.jpg","roof1.jpg")
+    casa4.transform = tr.matmul([tr.translate(4,0,1),tr.uniformScale(0.5)])
+
+    casa5=createHouse(pipeline,"wall1.jpg","roof4.jpg")
+    casa5.transform = tr.matmul([tr.translate(7,0,-1),tr.uniformScale(0.5)])
+
+    casa6=createHouse(pipeline,"wall3.jpg","roof4.jpg")
+    casa6.transform = tr.matmul([tr.translate(5,0,3),tr.uniformScale(0.5)])
+
+    casa7=createHouse(pipeline,"wall4.jpg","roof1.jpg")
+    casa7.transform = tr.matmul([tr.translate(-4,0,1),tr.uniformScale(0.5)])
+
+    casa8=createHouse(pipeline,"wall4.jpg","roof4.jpg")
+    casa8.transform = tr.matmul([tr.translate(-7,0,-1),tr.uniformScale(0.5)])
+
+    casa9=createHouse(pipeline,"wall3.jpg","roof4.jpg")
+    casa9.transform = tr.matmul([tr.translate(-5,0,3),tr.uniformScale(0.5)])
+
+    scene.childs += [casa1,casa2,casa3,casa4,casa5,casa6,casa7,casa8,casa9]
+
+    #veamos la barrera
+    #al ojimtero creamos una barrera cerca de cada camino
+    for i in range(9):
+        barrera = createWall(pipeline, "wall5.jpg")
+        barrera.transform = tr.translate(2.55,0,1*i-3)
+
+        barrera2 = createWall(pipeline, "wall5.jpg")
+        barrera2.transform = tr.translate(1.45,0,1*i-3)
+
+        barrera3 = createWall(pipeline, "wall5.jpg")
+        barrera3.transform = tr.translate(-1.45,0,1*i-3)
+
+        barrera4 = createWall(pipeline, "wall5.jpg")
+        barrera4.transform = tr.translate(-2.55,0,1*i-3)
+
+        scene.childs += [barrera, barrera2, barrera3, barrera4]
+    
     return scene
 
 if __name__ == "__main__":
@@ -476,9 +666,14 @@ if __name__ == "__main__":
     axisPipeline = es.SimpleModelViewProjectionShaderProgram()
     texPipeline = es.SimpleTextureModelViewProjectionShaderProgram()
     lightPipeline = ls.SimpleGouraudShaderProgram()
-    
+    textPipeline = tx.TextureTextRendererShaderProgram()
     # Telling OpenGL to use our shader program
     glUseProgram(axisPipeline.shaderProgram)
+
+    # Creating texture with all characters
+    textBitsTexture = tx.generateTextBitsTexture()
+    # Moving texture to GPU memory
+    gpuText3DTexture = tx.toOpenGLTexture(textBitsTexture)
 
     # Setting up the clear screen color
     glClearColor(0.85, 0.85, 0.85, 1.0)
@@ -492,6 +687,15 @@ if __name__ == "__main__":
     gpuAxis = es.GPUShape().initBuffers()
     axisPipeline.setupVAO(gpuAxis)
     gpuAxis.fillBuffers(cpuAxis.vertices, cpuAxis.indices, GL_STATIC_DRAW)
+
+    #espacio para el texto!--------------
+    speedCharSize = 0.15
+    speedShape=tx.textToShape(str(controller.carSpeed),speedCharSize,speedCharSize)
+    gpuSpeed = es.GPUShape().initBuffers()
+    textPipeline.setupVAO(gpuSpeed)
+    gpuSpeed.fillBuffers(speedShape.vertices, speedShape.indices, GL_STATIC_DRAW)
+    gpuSpeed.texture = gpuText3DTexture
+    #-------------------
 
     #NOTA: Aqui creas un objeto con tu escena
     dibujo = createStaticScene(texPipeline)
@@ -521,8 +725,13 @@ if __name__ == "__main__":
         #angulos para avanzar y retroceder respectivamente.
         #indica la latitud de donde se mira con la camara
         phi1=-0.5; phi2=0.5
-
+        
         if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
+            if controller.carSpeed<0:
+                controller.carSpeed += dt/10
+            #se actualiza la velocidad; 0.11 se encontro que al ojimetro era muy rapido y se setio como el limite de velocidad
+            if controller.carSpeed <=0.10:
+                controller.carSpeed += dt/100
             #si avanza se actualiza la posicion del auto
             controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
 
@@ -544,11 +753,17 @@ if __name__ == "__main__":
             
             #ahora le decimos que mire el auto como referencia
             controller.at = controller.carPos 
+        #si no precionamos la tecla
 
         #aca es excatamente lo mismo a lo anterior
-        if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
-
-            controller.carPos += controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+        elif glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
+            if controller.carSpeed>0:
+                controller.carSpeed -= dt/50
+            
+            if controller.carSpeed >=- 0.05:
+                 controller.carSpeed -= dt/100
+            
+            controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
 
             if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
                 controller.theta -= 2*dt
@@ -556,15 +771,52 @@ if __name__ == "__main__":
             if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
                 controller.theta += 2*dt
             
-            #es la misma dinamica que el anterior pero para retroceder! solo que ahora le imponemos otro angulo phi2 (otro grado de libertad)
+            #es la misma dinamica que el anterior pero para retroceder!
             #pero seguimos situando la camara en la misma esfera
-            camX = controller.radius * np.sin(controller.theta) * np.cos(phi2)
-            camY = controller.radius * np.sin(phi2)
-            camZ = controller.radius * np.cos(controller.theta) * np.cos(phi2)
+            camX = controller.radius * np.sin(controller.theta) * np.cos(-phi1)
+            camY = controller.radius * np.sin(-phi1)
+            camZ = controller.radius * np.cos(controller.theta) * np.cos(-phi1)
             
             controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
             
             controller.at = controller.carPos
+        else:
+            #si la velocidad es <0  la "aumentamos"
+            if(controller.carSpeed < 0):
+                controller.carSpeed = min(controller.carSpeed+dt/8, 0)
+                #si la velocidad es <0 aun podemos doblar el auto
+                if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                    controller.theta -= 2*dt
+
+                if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                    controller.theta += 2*dt
+                #actualizamos la posicion del auto
+                controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+                #actualizamos la pos de la camara en la esfera
+                camX = controller.radius * np.sin(controller.theta) * np.cos(-phi1)
+                camY = controller.radius * np.sin(-phi1)
+                camZ = controller.radius * np.cos(controller.theta) * np.cos(-phi1)
+                #actualizamos la posicion de la camara
+                controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
+            #si la velocidad es > 0 la reducimos
+            elif(controller.carSpeed > 0):
+                controller.carSpeed = max(controller.carSpeed-dt/8, 0)
+                #si la velocidad es >0 aun podemos doblar el auto
+                if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                    controller.theta += 2*dt
+            
+                if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                    controller.theta -= 2*dt
+                #actualizamos la posicion del auto
+                controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
+                #actualizamos la pos de la camara en la esfera
+                camX = controller.radius * np.sin(controller.theta) * np.cos(phi1)
+                camY = controller.radius * np.sin(phi1)
+                camZ = controller.radius * np.cos(controller.theta) * np.cos(phi1)
+                #actualizamos la posicion de la camara
+                controller.viewPos = controller.carPos +np.array([0,controller.height,0])+ np.array([camX,camY,camZ])
+
+
 
         # Clearing the screen in both, color and depth
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -581,13 +833,14 @@ if __name__ == "__main__":
             glUseProgram(axisPipeline.shaderProgram)
             glUniformMatrix4fv(glGetUniformLocation(axisPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
             axisPipeline.drawCall(gpuAxis, GL_LINES)
+        
+        
 
         #NOTA: Aquí dibujas tu objeto de escena
         glUseProgram(texPipeline.shaderProgram)
         sg.drawSceneGraphNode(dibujo, texPipeline, "model")
 
         glUseProgram(lightPipeline.shaderProgram)
-        
         #actualizamos el auto; buscamos el nodo, luego le decimos que cambie su transformacion a que primero rote pi+theta
         #y luego lo transladamos como antes por la misma posicion!
         sg.findNode(car,"car1").transform = tr.matmul([tr.translate(controller.carPos[0],controller.carPos[1],controller.carPos[2]),
