@@ -49,7 +49,7 @@ class Controller:
         self.radius= 1.99
         
         #parametro velocidad del auto
-        self.carSpeed=0.009
+        self.carSpeed=0
 
         #angulo inciial del auto c/r al ¡¡ eje Z DEL AUTO !!
         self.theta = 0.0
@@ -482,7 +482,7 @@ def createWall(pipeline,wallTexture):
 
     #luego podemos hacer las murallitas de contencion en filas
     aBarrier=sg.SceneGraphNode('barrerita')
-    aBarrier.transform = tr.matmul([tr.scale(1/16,1/5,1)])
+    aBarrier.transform = tr.matmul([tr.scale(1/16,1/4,1)])
     aBarrier.childs += [cube]
 
     scene=sg.SceneGraphNode('world')
@@ -753,12 +753,11 @@ if __name__ == "__main__":
             
             #ahora le decimos que mire el auto como referencia
             controller.at = controller.carPos 
-        #si no precionamos la tecla
 
         #aca es excatamente lo mismo a lo anterior
         elif glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
             if controller.carSpeed>0:
-                controller.carSpeed -= dt/50
+                controller.carSpeed -= dt/40
             
             if controller.carSpeed >=- 0.05:
                  controller.carSpeed -= dt/100
@@ -780,10 +779,11 @@ if __name__ == "__main__":
             controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
             
             controller.at = controller.carPos
+        #si no apreto alguna de las teclas
         else:
             #si la velocidad es <0  la "aumentamos"
             if(controller.carSpeed < 0):
-                controller.carSpeed = min(controller.carSpeed+dt/8, 0)
+                controller.carSpeed = min(controller.carSpeed+dt/40, 0)
                 #si la velocidad es <0 aun podemos doblar el auto
                 if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
                     controller.theta -= 2*dt
@@ -800,7 +800,7 @@ if __name__ == "__main__":
                 controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
             #si la velocidad es > 0 la reducimos
             elif(controller.carSpeed > 0):
-                controller.carSpeed = max(controller.carSpeed-dt/8, 0)
+                controller.carSpeed = max(controller.carSpeed-dt/40, 0)
                 #si la velocidad es >0 aun podemos doblar el auto
                 if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
                     controller.theta += 2*dt
