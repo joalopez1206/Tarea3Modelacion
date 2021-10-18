@@ -45,15 +45,15 @@ def on_key(window, key, scancode, action, mods):
         controller.camPosition = controller.camPosition - controller.front*0.0175
     elif key == glfw.KEY_D:
         if controller.yaw >= np.pi:
-            controller.yaw = -np.pi + 0.061
+            controller.yaw = -np.pi + 0.0061
         else:
-            controller.yaw = controller.yaw + 0.061
+            controller.yaw = controller.yaw + 0.0061
     
     elif key == glfw.KEY_A:
         if controller.yaw <= -np.pi:
-            controller.yaw = np.pi - 0.061
+            controller.yaw = np.pi - 0.0061
         else:
-            controller.yaw = controller.yaw - 0.061
+            controller.yaw = controller.yaw - 0.0061
 
     elif key == glfw.KEY_SPACE:
         controller.fillPolygon = not controller.fillPolygon
@@ -264,6 +264,11 @@ if __name__ == "__main__":
         if glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
             controller.camPosition = controller.camPosition - controller.front*0.000175
         
+        if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+            controller.yaw -= (np.pi/10000)
+
+        if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+            controller.yaw += (np.pi/10000)
 
         view = tr.lookAt(
             controller.camPosition,
