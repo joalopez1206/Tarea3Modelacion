@@ -17,6 +17,22 @@ import grafica.performance_monitor as pm
 import grafica.text_renderer as tx
 from grafica.assets_path import getAssetPath
 from operator import add
+import math
+
+#funcion obtenida de stack-exchange para truncar numeros !
+def truncate(number, decimals=0):
+    """
+    Returns a value truncated to a specific number of decimal places.
+    """
+    if not isinstance(decimals, int):
+        raise TypeError("decimal places must be an integer.")
+    elif decimals < 0:
+        raise ValueError("decimal places has to be 0 or more.")
+    elif decimals == 0:
+        return math.trunc(number)
+
+    factor = 10.0 ** decimals
+    return math.trunc(number * factor) / factor
 
 __author__ = "Ivan Sipiran"
 __license__ = "MIT"
@@ -695,6 +711,7 @@ if __name__ == "__main__":
     textPipeline.setupVAO(gpuSpeed)
     gpuSpeed.fillBuffers(speedShape.vertices, speedShape.indices, GL_STATIC_DRAW)
     gpuSpeed.texture = gpuText3DTexture
+    color = [1.0,1.0,1.0]
     #-------------------
 
     #NOTA: Aqui creas un objeto con tu escena
@@ -727,6 +744,7 @@ if __name__ == "__main__":
         phi1=-0.5; phi2=0.5
         
         if glfw.get_key(window, glfw.KEY_W) == glfw.PRESS:
+            #vemos si estamos llendo para atras pa frenar mas rapido
             if controller.carSpeed<0:
                 controller.carSpeed += dt/10
             #se actualiza la velocidad; 0.11 se encontro que al ojimetro era muy rapido y se setio como el limite de velocidad
@@ -756,29 +774,46 @@ if __name__ == "__main__":
 
         #aca es excatamente lo mismo a lo anterior
         elif glfw.get_key(window, glfw.KEY_S) == glfw.PRESS:
+            #si estamos avanzando frenamos mas rapido y aun podemos doblar como si estuviesemos avazando
             if controller.carSpeed>0:
+
                 controller.carSpeed -= dt/40
+                 #si doblamos se actualiza el angulo
+                if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                    controller.theta += 2*dt
+                
+                if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                    controller.theta -= 2*dt
+                #ahora situamos las coordenadas esfericas de la camara
+                camX = controller.radius * np.sin(controller.theta) * np.cos(phi1)
+                camY = controller.radius * np.sin(phi1)
+                camZ = controller.radius * np.cos(controller.theta) * np.cos(phi1)
+                
+                #notemos que la posicion de vista es:
+                #el vector donde esta el auto, un offset que es la altura del centro de la esfera y la esfera en si
+                controller.viewPos = controller.carPos +np.array([0,controller.height,0])+ np.array([camX,camY,camZ])
             
+            #cap de la velocidad si es que retrocede
             if controller.carSpeed >=- 0.05:
                  controller.carSpeed -= dt/100
             
             controller.carPos -= controller.carSpeed*np.array([np.sin(controller.theta),0,np.cos(controller.theta)])
-
-            if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
-                controller.theta -= 2*dt
-
-            if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
-                controller.theta += 2*dt
             
             #es la misma dinamica que el anterior pero para retroceder!
             #pero seguimos situando la camara en la misma esfera
-            camX = controller.radius * np.sin(controller.theta) * np.cos(-phi1)
-            camY = controller.radius * np.sin(-phi1)
-            camZ = controller.radius * np.cos(controller.theta) * np.cos(-phi1)
-            
-            controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
-            
-            controller.at = controller.carPos
+            if controller.carSpeed<0:
+                camX = controller.radius * np.sin(controller.theta) * np.cos(-phi1)
+                camY = controller.radius * np.sin(-phi1)
+                camZ = controller.radius * np.cos(controller.theta) * np.cos(-phi1)
+                
+                controller.viewPos = controller.carPos +np.array([0,controller.height,0]) - np.array([camX,camY,camZ])
+                
+                controller.at = controller.carPos
+                if glfw.get_key(window, glfw.KEY_A) == glfw.PRESS:
+                    controller.theta -= 2*dt
+
+                if glfw.get_key(window, glfw.KEY_D) == glfw.PRESS:
+                    controller.theta += 2*dt
         #si no apreto alguna de las teclas
         else:
             #si la velocidad es <0  la "aumentamos"
@@ -834,7 +869,17 @@ if __name__ == "__main__":
             glUniformMatrix4fv(glGetUniformLocation(axisPipeline.shaderProgram, "model"), 1, GL_TRUE, tr.identity())
             axisPipeline.drawCall(gpuAxis, GL_LINES)
         
-        
+        #cambiamos el texto de la velocidad
+        speedShape=tx.textToShape(str(truncate(controller.carSpeed,3)*10**3)+" Km/H",speedCharSize,speedCharSize)
+        # Updating GPU memory...
+        gpuSpeed.fillBuffers(speedShape.vertices, speedShape.indices, GL_STREAM_DRAW)
+        #texto owo, obtenido del ex_text_renderer
+        glUseProgram(textPipeline.shaderProgram)
+        glUniform4f(glGetUniformLocation(textPipeline.shaderProgram, "fontColor"), 1,1,1,1)
+        glUniform4f(glGetUniformLocation(textPipeline.shaderProgram, "backColor"), 0,0,0,0)
+        glUniformMatrix4fv(glGetUniformLocation(textPipeline.shaderProgram, "transform"), 1, GL_TRUE,
+            tr.translate(-0.9, -0.9, 0))
+        textPipeline.drawCall(gpuSpeed)
 
         #NOTA: Aquí dibujas tu objeto de escena
         glUseProgram(texPipeline.shaderProgram)
@@ -855,6 +900,6 @@ if __name__ == "__main__":
     # freeing GPU memory
     gpuAxis.clear()
     dibujo.clear()
-    
+    gpuSpeed.clear()
 
     glfw.terminate()
